@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button";
+import { prisma } from "@/lib/db";
 
-const Page = () => {
+const Page = async () => {
+  const posts = await prisma.post.findMany();
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <Button variant="destructive" size="lg">
-        <h1 className="text-4xl font-bold mb-1">Hello World</h1>
-      </Button>
+        {JSON.stringify(posts, null, 2)}
     </div>
   );
 }
