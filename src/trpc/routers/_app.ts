@@ -11,7 +11,7 @@ export const appRouter = createTRPCRouter({
         )
         .mutation(async ({input}) => {
             await inngest.send({
-                name: 'test/hello.world',
+                name: 'test/code.agent',
                 data: {
                     value: input.value,
                 },
@@ -28,7 +28,7 @@ export const appRouter = createTRPCRouter({
         )
         .query((opts) => {
         return {
-            greeting: `hello ${opts.input.text}`,
+            greeting: `Hi ${opts.input.text}`,
         };
         }),
     });

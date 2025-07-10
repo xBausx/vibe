@@ -22,7 +22,7 @@ const Page = () => {
     <div className="flex flex-col items-center justify-center min-h-screen">
       <Input value={value} onChange={(e) => setValue(e.target.value)}/>
       <Button disabled={invoke.isPending} onClick={() => invoke.mutate({ value: value})}>
-        Invoke Background Job
+        GENERATE
       </Button>
     </div>
   );

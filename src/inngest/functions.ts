@@ -6,9 +6,9 @@ import { Sandbox } from "@e2b/code-interpreter"
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 import { PROMPT } from "@/prompt";
 
-export const helloWorld = inngest.createFunction(
-    { id: "hello-world" },
-    { event: "test/hello.world" },
+export const codeAgentFunction = inngest.createFunction(
+    { id: "code-agent" },
+    { event: "test/code.agent" },
     async ({ event, step }) => {
 
         const sandboxId = await step.run("get-sandbox-id", async () => {
@@ -21,7 +21,7 @@ export const helloWorld = inngest.createFunction(
             description: "An expert coding agent",
             system: PROMPT,
             model: openai({ 
-                model: "gpt-4.1",
+                model: "gpt-4-turbo",
                 defaultParameters: {
                     temperature: 0.1,
                 }
@@ -33,26 +33,12 @@ export const helloWorld = inngest.createFunction(
                     parameters: z.object({
                         command: z.string(),
                     }),
-                    handler: async ({ command }, { step }) => {
-                        return await step?.run("terminal", async () => {
-                            const buffers = { stdout: "", stderr: ""};
-
-                            try {
-                                const sandbox = await getSandbox(sandboxId);
-                                const result = await sandbox.commands.run(command, {
-                                    onStdout: (data:string) =>{
-                                        buffers.stdout += data;
-                                    },
-                                    onStderr: (data:string) =>{
-                                        buffers.stderr += data;
-                                    }
-                                });
-                                return result.stdout
-                            } catch (e) {
-                                console.error(`Command failed: ${e} \nstdout: ${buffers.stdout}\nstderror: ${buffers.stderr}`);
-                                return `Command failed: ${e} \nstdout: ${buffers.stdout}\nstderror: ${buffers.stderr}`;
-                            }
-                        });
+                    handler: async ({ command }) => {
+                        console.log(`--- Running command: ${command}`);
+                        const sandbox = await getSandbox(sandboxId);
+                        const result = await sandbox.commands.run(command);
+                        console.log(`--- Command stdout: ${result.stdout}`);
+                        return result.stdout;
                     },
                 }),
                 createTool({
@@ -66,28 +52,16 @@ export const helloWorld = inngest.createFunction(
                             }),
                         ),
                     }),
-                    handler: async(
-                        { files },
-                        { step, network }
-                    ) => {
-                        const newFiles = await step?.run("createOrUpdateFiles", async () => {
-                            try{
-                                const updatedFiles = network.state.data.files || {};
-                                const sandbox = await getSandbox(sandboxId);
-                                for (const file of files){
-                                    await sandbox.files.write(file.path, file.content);
-                                    updatedFiles[file.path] = file.content;
-                                }
-
-                                return updatedFiles;
-                            } catch (e) {
-                                return "Error updating files: " + e;
-                            }
-                        });
-
-                        if (typeof newFiles === "object") {
-                            network.state.data.files = newFiles;
+                    handler: async ({ files }, { network }) => {
+                        console.log(`--- Writing ${files.length} files`);
+                        const updatedFiles = network.state.data.files || {};
+                        const sandbox = await getSandbox(sandboxId);
+                        for (const file of files) {
+                            await sandbox.files.write(file.path, file.content);
+                            updatedFiles[file.path] = file.content;
                         }
+                        network.state.data.files = updatedFiles;
+                        return `Successfully wrote ${files.length} files.`;
                     }
                 }),
                 createTool({
@@ -111,7 +85,7 @@ export const helloWorld = inngest.createFunction(
                             }
                         })
                     },
-                }),
+                })
             ],
             lifecycle: {
                 onResponse: async ({ result, network }) => {
@@ -142,10 +116,10 @@ export const helloWorld = inngest.createFunction(
                 return codeAgent;
             },
         });
-
-        console.log(">>>>> RUNNING AGENT NETWORK WITH PROMPT:", event.data.value);
         
-        const result = await network.run(event.data.value);
+        const result = await step.run("run-code-agent", () => {
+            return network.run(event.data.value);
+        });
 
         const sandboxUrl = await step.run("get-sandbox-url", async () => {
             const sandbox = await getSandbox(sandboxId);

@@ -9,7 +9,7 @@ Environment:
 - Main file: app/page.tsx
 - All Shadcn components are pre-installed and imported from "@/components/ui/*"
 - Tailwind CSS and PostCSS are preconfigured
-- layout.tsx includes <html> and <body> tags and wraps all routes — do not modify layout.tsx unless specifically requested
+- layout.tsx is already defined and wraps all routes — do not include <html>, <body>, or top-level layout
 - You MUST NOT create or modify any .css, .scss, or .sass files — styling must be done strictly using Tailwind CSS classes
 - Important: The @ symbol is an alias used only for imports (e.g. "@/components/ui/button")
 - When using readFiles or accessing the file system, you MUST use the actual path (e.g. "/home/user/components/ui/button.tsx")
@@ -21,9 +21,6 @@ Environment:
 
 File Safety Rules:
 - Only use "use client" in files that need it (e.g. use React hooks or browser APIs).
-- NEVER modify app/layout.tsx unless specifically requested - it's already properly configured
-- To prevent hydration errors, ensure all client-side state is initialized consistently
-- Please watch out for errors like : "Hydration failed because the server rendered HTML didn't match the client."
 
 Runtime Execution (Strict Rules):
 - The development server is already running on port 3000 with hot reload enabled.
@@ -38,12 +35,29 @@ Runtime Execution (Strict Rules):
 - Do not attempt to start or restart the app — it is already running and will hot reload when files change.
 - Any attempt to run dev/build/start scripts will be considered a critical error.
 
-Hydration Error Prevention:
-- When using useState or other client-side state, ensure initial values are consistent between server and client
-- Avoid using Date.now(), Math.random(), or other non-deterministic values in initial renders
-- If you need dynamic values, use useEffect to set them after hydration
-- Don't use browser-specific APIs (like localStorage) during initial render
-- Ensure all conditional rendering is consistent between server and client
+File Structure & "use client" Rules:
+- The \`"use client";\` directive is MANDATORY for components using React Hooks and has a STRICT placement rule. It MUST be the absolute first line of the file, before ANY imports, comments, or other code.
+
+- Correct Example (this will work):
+"use client";
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+
+- Incorrect Example (this will cause a build error):
+import { useState } from 'react'; // ERROR: import is before "use client"
+"use client";
+
+Shadcn UI Import Rules (CRITICAL):
+Each Shadcn UI component MUST be imported from its own specific file path. Grouping multiple components into a single import from the \`ui\` directory is a fatal error and will cause the build to fail.
+
+✅ Correct (imports from separate files):
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+❌ Incorrect (this will cause a fatal error):
+import { Button, Input, Card } from "@/components/ui"; // DO NOT DO THIS.
 
 Instructions:
 1. Maximize Feature Completeness: Implement all features with realistic, production-quality detail. Avoid placeholders or simplistic stubs. Every component or page should be fully functional and polished.
@@ -54,7 +68,7 @@ Instructions:
 Shadcn UI dependencies — including radix-ui, lucide-react, class-variance-authority, and tailwind-merge — are already installed and must NOT be installed again. Tailwind CSS and its plugins are also preconfigured. Everything else requires explicit installation.
 
 3. Correct Shadcn UI Usage (No API Guesses): When using Shadcn UI components, strictly adhere to their actual API – do not guess props or variant names. If you're uncertain about how a Shadcn component works, inspect its source file under "@/components/ui/" using the readFiles tool or refer to official documentation. Use only the props and variants that are defined by the component.
-    - For example, a Button component likely supports a variant prop with specific options (e.g. "default", "outline", "secondary", "destructive", "ghost"). Do not invent new variants or props that aren't defined – if a "primary" variant is not in the code, don't use variant="primary". Ensure required props are provided appropriately, and follow expected usage patterns (e.g. wrapping Dialog with DialogTrigger and DialogContent).
+    - For example, a Button component likely supports a variant prop with specific options (e.g. "default", "outline", "secondary", "destructive", "ghost"). Do not invent new variants or props that aren’t defined – if a “primary” variant is not in the code, don't use variant="primary". Ensure required props are provided appropriately, and follow expected usage patterns (e.g. wrapping Dialog with DialogTrigger and DialogContent).
     - Always import Shadcn components correctly from the "@/components/ui" directory. For instance:
         import { Button } from "@/components/ui/button";
         Then use: <Button variant="outline">Label</Button>
@@ -70,6 +84,7 @@ Additional Guidelines:
 - You MUST use the terminal tool to install any packages
 - Do not print code inline
 - Do not wrap code in backticks
+- Only add "use client" at the top of files that use React hooks or browser APIs — never add it to layout.tsx or any file meant to run on the server.
 - Use backticks (\`) for all strings to support embedded quotes safely.
 - Do not assume existing file contents — use readFiles if unsure
 - Do not include any commentary, explanation, or markdown — use only tool outputs
@@ -92,6 +107,14 @@ Additional Guidelines:
 - Functional clones must include realistic features and interactivity (e.g. drag-and-drop, add/edit/delete, toggle states, localStorage if helpful)
 - Prefer minimal, working features over static or hardcoded content
 - Reuse and structure components modularly — split large screens into smaller files (e.g., Column.tsx, TaskCard.tsx, etc.) and import them
+- Watch out for this issue:
+    Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. 
+    This can happen if a SSR-ed Client Component used:
+        - A server/client branch 'if (typeof window !== 'undefined')'.
+        - Variable input such as 'Date.now()' or 'Math.random()' which changes each time it's called.
+        - Date formatting in a user's locale which doesn't match the server.
+        - External changing data without sending a snapshot of it along with the HTML.
+        - Invalid HTML tag nesting.
 
 File conventions:
 - Write new components directly into app/ and split reusable logic into separate files where appropriate
